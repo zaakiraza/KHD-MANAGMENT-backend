@@ -5,7 +5,7 @@ const getUser = async (req, res) => {
   try {
     const userId = req.params.id;
     const userData = await User.findOne({ _id: userId }).select(
-      "-__v -createdAt -updatedAt -personal_info.password -personal_info.otp -personal_info.otpExpiresAt"
+      "-__v -createdAt -updatedAt -personal_info.password -personal_info.otp -personal_info.otpExpiresAt -personal_info.isAdmin"
     );
     if (!userData) {
       return errorHandler(res, 404, "User not found");
@@ -19,7 +19,7 @@ const getUser = async (req, res) => {
 const getAllUser = async (req, res) => {
   try {
     const users = await User.find().select(
-      "-__v -createdAt -updatedAt -personal_info.password -personal_info.otp -personal_info.otpExpiresAt"
+      "-__v -createdAt -updatedAt -personal_info.password -personal_info.otp -personal_info.otpExpiresAt -personal_info.isAdmin"
     );
     if (users.length === 0) {
       return errorHandler(res, 404, "No users found");
@@ -36,9 +36,18 @@ const getAllUser = async (req, res) => {
   }
 };
 
-const update_personal = async (req, res) => {
+const update_user = async (req, res) => {
   const userId = req.user.userId;
+  const { personal_info, academic_progress } = req.body;
   try {
+    if (!personal_info || !academic_progress) {
+      return errorHandler(
+        res,
+        400,
+        "Personal info and academic progress are required"
+      );
+    }
+
     const {
       first_name,
       last_name,
@@ -48,12 +57,14 @@ const update_personal = async (req, res) => {
       img_URL,
       whatsapp_no,
       alternative_no,
+      email,
       address,
       city,
       country,
       enrolled_year,
       marj_e_taqleed,
-    } = req.body;
+      halafnama,
+    } = personal_info;
 
     if (
       !first_name ||
@@ -66,36 +77,58 @@ const update_personal = async (req, res) => {
       !alternative_no ||
       !address ||
       !city ||
-      !country
+      !country ||
+      !enrolled_year ||
+      !marj_e_taqleed ||
+      halafnama === undefined
     ) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return errorHandler(res, 400, "All personal info fields are required");
     }
 
     if (age > 19 || age < 9) {
       return errorHandler(res, 400, "Age is not according to our school");
     }
 
+    const { academic_class, institute_name, inProgress, result } =
+      academic_progress;
+    if (!academic_class || !institute_name || inProgress === undefined) {
+      return errorHandler(
+        res,
+        400,
+        "All academic progress fields are required"
+      );
+    }
+
+    // Build $set fields with dot-notation so we don't overwrite the entire nested objects
+    const setFields = {
+      "personal_info.first_name": first_name,
+      "personal_info.last_name": last_name,
+      "personal_info.father_name": father_name,
+      "personal_info.dob": dob,
+      "personal_info.age": age,
+      "personal_info.img_URL": img_URL,
+      "personal_info.whatsapp_no": whatsapp_no,
+      "personal_info.alternative_no": alternative_no,
+      "personal_info.address": address,
+      "personal_info.city": city,
+      "personal_info.country": country,
+      "personal_info.enrolled_year": enrolled_year,
+      "personal_info.marj_e_taqleed": marj_e_taqleed,
+      "personal_info.halafnama": halafnama,
+      "academic_progress.academic_class": academic_class,
+      "academic_progress.institute_name": institute_name,
+      "academic_progress.inProgress": inProgress,
+      "academic_progress.result": result,
+    };
+
+    // Only update email if provided; avoid setting to undefined
+    if (email !== undefined) {
+      setFields["personal_info.email"] = email;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      {
-        $set: {
-          personal_info: {
-            first_name,
-            last_name,
-            father_name,
-            dob,
-            age,
-            img_URL,
-            whatsapp_no,
-            alternative_no,
-            address,
-            city,
-            country,
-            enrolled_year,
-            marj_e_taqleed,
-          },
-        },
-      },
+      { $set: setFields },
       { new: true }
     );
     if (!updatedUser) {
@@ -119,29 +152,47 @@ const update_personal = async (req, res) => {
   }
 };
 
-const update_academic_progress = async (req, res) => {
-  const userId = req.user.userId;
-  try {
-    const { academic_class, institute_name, inProgress, result } = req.body;
+const update_class_history = async (req, res) => {
+  const { id } = req.params;
+  const {
+    class_name,
+    year,
+    status,
+    session,
+    result,
+    repeat_count,
+    isCompleted,
+  } = req.body;
 
-    if (!academic_class || !institute_name || inProgress === undefined) {
-      return res.status(400).json({ message: "Missing required fields" });
+  try {
+    if (
+      !class_name ||
+      !year ||
+      !status ||
+      !session ||
+      isCompleted === undefined
+    ) {
+      return errorHandler(res, 400, "Missing required fields");
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      userId,
+      id,
       {
-        $set: {
-          academic_progress: {
-            academic_class,
-            institute_name,
-            inProgress,
+        $push: {
+          class_history: {
+            class_name,
+            year,
+            status,
+            session,
             result,
+            repeat_count,
+            isCompleted,
           },
         },
       },
       { new: true }
     );
+
     if (!updatedUser) {
       return errorHandler(res, 404, "User not found");
     }
@@ -149,26 +200,23 @@ const update_academic_progress = async (req, res) => {
     return successHandler(
       res,
       200,
-      "User academic progress updated successfully",
-      updatedUser.academic_progress,
+      "User class history updated successfully",
+      updatedUser.class_history,
       1
     );
   } catch (error) {
     return errorHandler(
       res,
       500,
-      "Error updating user academic progress",
+      "Error updating user class history",
       error.message
     );
   }
 };
 
-const update_class_history = async (req, res) => {};
-
 export default {
   getUser,
   getAllUser,
-  update_personal,
-  update_academic_progress,
+  update_user,
   update_class_history,
 };

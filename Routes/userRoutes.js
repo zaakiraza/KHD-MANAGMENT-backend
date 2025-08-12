@@ -7,6 +7,5 @@ export const userRoutes = express.Router();
 
 userRoutes.get("/single/:id", authenticateToken, admin, users.getUser);
 userRoutes.get("/all", authenticateToken, admin, users.getAllUser);
-userRoutes.put("/update_personal", authenticateToken, users.update_personal);
-userRoutes.put("/update_academic_progress", authenticateToken, users.update_academic_progress);
+userRoutes.put("/update_personal", authenticateToken, users.update_user);
 userRoutes.put("/update_class_history/:id", authenticateToken, admin, users.update_class_history);
