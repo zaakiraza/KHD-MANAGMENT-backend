@@ -42,6 +42,47 @@ const userSchema = new mongoose.Schema(
         type: Date,
         default: undefined,
       },
+      rollNo: {
+        type: Number,
+        unique: true,
+      },
+      gender: {
+        type: String,
+        required: true,
+      },
+      CNIC: {
+        type: Number,
+        required: true,
+        unique: true,
+      },
+    },
+
+    guardian_info: {
+      name: {
+        type: String,
+        required: true,
+      },
+      relationship: {
+        type: String,
+        required: true,
+      },
+      email: {
+        type: String,
+        required: true,
+      },
+      whatsapp_no: {
+        type: String,
+        required: true,
+      },
+      address: {
+        type: String,
+        required: true,
+      },
+      CNIC: {
+        type: Number,
+        required: true,
+        unique: true,
+      },
     },
 
     academic_progress: {

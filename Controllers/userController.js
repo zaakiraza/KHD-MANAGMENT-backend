@@ -38,9 +38,9 @@ const getAllUser = async (req, res) => {
 
 const update_user = async (req, res) => {
   const userId = req.user.userId;
-  const { personal_info, academic_progress } = req.body;
+  const { personal_info, academic_progress, guardian_info } = req.body;
   try {
-    if (!personal_info || !academic_progress) {
+    if (!personal_info || !academic_progress || !guardian_info) {
       return errorHandler(
         res,
         400,
@@ -57,13 +57,14 @@ const update_user = async (req, res) => {
       img_URL,
       whatsapp_no,
       alternative_no,
-      email,
       address,
       city,
       country,
       enrolled_year,
       marj_e_taqleed,
       halafnama,
+      gender,
+      CNIC,
     } = personal_info;
 
     if (
@@ -80,7 +81,9 @@ const update_user = async (req, res) => {
       !country ||
       !enrolled_year ||
       !marj_e_taqleed ||
-      halafnama === undefined
+      halafnama === undefined ||
+      !gender ||
+      !CNIC
     ) {
       return errorHandler(res, 400, "All personal info fields are required");
     }
@@ -99,6 +102,17 @@ const update_user = async (req, res) => {
       );
     }
 
+    if (
+      !guardian_info.name ||
+      !guardian_info.relationship ||
+      !guardian_info.email ||
+      !guardian_info.whatsapp_no ||
+      !guardian_info.address ||
+      !guardian_info.CNIC
+    ) {
+      return errorHandler(res, 400, "All guardian info fields are required");
+    }
+
     // Build $set fields with dot-notation so we don't overwrite the entire nested objects
     const setFields = {
       "personal_info.first_name": first_name,
@@ -115,16 +129,19 @@ const update_user = async (req, res) => {
       "personal_info.enrolled_year": enrolled_year,
       "personal_info.marj_e_taqleed": marj_e_taqleed,
       "personal_info.halafnama": halafnama,
+      "personal_info.gender": gender,
+      "personal_info.CNIC": CNIC,
       "academic_progress.academic_class": academic_class,
       "academic_progress.institute_name": institute_name,
       "academic_progress.inProgress": inProgress,
       "academic_progress.result": result,
+      "guardian_info.name": guardian_info.name,
+      "guardian_info.relationship": guardian_info.relationship,
+      "guardian_info.CNIC": guardian_info.email,
+      "guardian_info.whatsapp_no": guardian_info.whatsapp_no,
+      "guardian_info.address": guardian_info.address,
+      "guardian_info.CNIC": guardian_info.CNIC,
     };
-
-    // Only update email if provided; avoid setting to undefined
-    if (email !== undefined) {
-      setFields["personal_info.email"] = email;
-    }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -139,7 +156,7 @@ const update_user = async (req, res) => {
       res,
       200,
       "User personal information updated successfully",
-      updatedUser.personal_info,
+      { personal_info: updatedUser.personal_info, guardian_info: updatedUser.guardian_info, academic_progress: updatedUser.academic_progress },
       1
     );
   } catch (error) {

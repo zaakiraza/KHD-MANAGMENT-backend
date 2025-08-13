@@ -8,13 +8,13 @@ dotenv.config();
 
 const signup = async (req, res) => {
   try {
-    const { personal_info, academic_progress } = req.body;
+    const { personal_info, academic_progress, guardian_info } = req.body;
 
-    if (!personal_info || !academic_progress) {
+    if (!personal_info || !academic_progress || !guardian_info) {
       return errorHandler(
         res,
         400,
-        "Personal info and academic progress are required"
+        "Personal info, academic progress, and guardian info are required"
       );
     }
 
@@ -34,6 +34,8 @@ const signup = async (req, res) => {
       enrolled_year,
       marj_e_taqleed,
       halafnama,
+      gender,
+      CNIC,
     } = personal_info;
 
     if (
@@ -51,7 +53,9 @@ const signup = async (req, res) => {
       !country ||
       !enrolled_year ||
       !marj_e_taqleed ||
-      halafnama === undefined
+      halafnama === undefined ||
+      !gender ||
+      !CNIC
     ) {
       return errorHandler(res, 400, "All personal info fields are required");
     }
